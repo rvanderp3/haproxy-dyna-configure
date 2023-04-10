@@ -17,9 +17,9 @@ MODE="${MODE:-release}"
 GIT_COMMIT="${SOURCE_GIT_COMMIT:-$(git rev-parse --verify 'HEAD^{commit}')}"
 GIT_TAG="${BUILD_VERSION:-$(git describe --always --abbrev=40 --dirty)}"
 GOFLAGS="${GOFLAGS:--mod=vendor}"
-LDFLAGS="${LDFLAGS} -X github.com/rvanderp3/haproxy-dyna-config/pkg/version.Raw=${GIT_TAG} -X github.com/rvanderp3/haproxy-dyna-config/pkg/version.Commit=${GIT_COMMIT}"
+LDFLAGS="${LDFLAGS} -X github.com/rvanderp3/haproxy-dyna-configure/pkg/version.Raw=${GIT_TAG} -X github.com/rvanderp3/haproxy-dyna-configure/pkg/version.Commit=${GIT_COMMIT}"
 TAGS="${TAGS:-}"
-OUTPUT="${OUTPUT:-bin/haproxy-dyna-config}"
+OUTPUT="${OUTPUT:-bin/haproxy-dyna-configure}"
 export CGO_ENABLED=0
 
 case "${MODE}" in
@@ -43,5 +43,4 @@ then
 	export CGO_ENABLED=1
 fi
 
-go build "${GOFLAGS}" -ldflags "${LDFLAGS}" -tags "${TAGS}" -o "${OUTPUT}" ./cmd/haproxy-dyna-config
-Footer
+go build "${GOFLAGS}" -ldflags "${LDFLAGS}" -tags "${TAGS}" -o "${OUTPUT}" ./cmd/haproxy-dyna-configure

@@ -1,0 +1,57 @@
+monitor-config:
+  check-timeout: 500
+  monitor-ranges:
+    - ip-address-start: "192.168.100.200"
+      ip-address-end: "192.168.100.240"
+      monitor-ports:
+        - port: 6443
+          name: "api"
+          path-match: "api"
+        - port: 443
+          name: "ingress-https"
+          path-prefix: "*.apps"
+    - ip-address-start: "192.168.151.2"
+      ip-address-end: "192.168.151.99"
+      monitor-ports:
+        - port: 6443
+          name: "api"
+          path-match: "api"
+        - port: 443
+          name: "ingress-https"
+          path-prefix: "*.apps"
+    - ip-address-start: "192.168.152.2"
+      ip-address-end: "192.168.152.99"
+      monitor-ports:
+        - port: 6443
+          name: "api"
+          path-match: "api"
+        - port: 443
+          name: "ingress-https"
+          path-prefix: "*.apps"
+    - ip-address-start: "192.168.153.2"
+      ip-address-end: "192.168.153.99"
+      monitor-ports:
+        - port: 6443
+          name: "api"
+          path-match: "api"
+        - port: 443
+          name: "ingress-https"
+          path-prefix: "*.apps"
+    - ip-address-start: "192.168.154.2"
+      ip-address-end: "192.168.154.99"
+      monitor-ports:
+        - port: 6443
+          name: "api"
+          path-match: "api"
+        - port: 443
+          name: "ingress-https"
+          path-prefix: "*.apps"
+    - ip-address-start: "192.168.155.2"
+      ip-address-end: "192.168.155.99"
+      monitor-ports:
+        - port: 6443
+          name: "api"
+          path-match: "api"
+        - port: 443
+          name: "ingress-https"
+          path-prefix: "*.apps"
