@@ -61,13 +61,19 @@ func createFrontend(client *clientnative.HAProxyClient, name string, port *data.
 		Name: name,
 	}
 
+	_, _, err = config.GetFrontend(name, "")
+	if err == nil {
+		logrus.Infof("frontend %s already exists", name)
+		return nil
+	}
+
 	err = config.CreateFrontend(&fe, "", version)
 	if err != nil {
 		return err
 	}
 
-	id := int64(0)
 	version++
+	id := int64(0)
 	timeout := int64(5000)
 	tcpRule1 := models.TCPRequestRule{
 		ID:      &id,
@@ -105,7 +111,7 @@ func createFrontend(client *clientnative.HAProxyClient, name string, port *data.
 	return nil
 }
 
-func createBackendSwitchingRule(client *clientnative.HAProxyClient, baseDomain string, backendName string, port *data.MonitorPort) error {
+func createBackendSwitchingRule(client *clientnative.HAProxyClient, baseDomain string, frontendName string, backendName string, port *data.MonitorPort) error {
 	logrus.Infof("creating backend switching rule %s", backendName)
 	config := client.Configuration
 	version, err := config.GetVersion("")
@@ -136,7 +142,7 @@ func createBackendSwitchingRule(client *clientnative.HAProxyClient, baseDomain s
 		}
 	}
 
-	err = config.CreateBackendSwitchingRule(backendName, &rule, "", version)
+	err = config.CreateBackendSwitchingRule(frontendName, &rule, "", version)
 	if err != nil {
 		return err
 	}
@@ -197,15 +203,16 @@ func ApplyConfiguration(monitorConfig *data.MonitorConfigSpec) error {
 				continue
 			}
 			name := fmt.Sprintf("%s-%d", monitorRange.BaseDomain, monitorPort.Port)
+			frontendName := fmt.Sprintf("dyna-frontend-%d", monitorPort.Port)
 			err := createBackend(client, name, &monitorPort)
 			if err != nil {
 				return err
 			}
-			err = createFrontend(client, name, &monitorPort)
+			err = createFrontend(client, frontendName, &monitorPort)
 			if err != nil {
 				return err
 			}
-			err = createBackendSwitchingRule(client, monitorRange.BaseDomain, name, &monitorPort)
+			err = createBackendSwitchingRule(client, monitorRange.BaseDomain, frontendName, name, &monitorPort)
 			if err != nil {
 				return err
 			}
