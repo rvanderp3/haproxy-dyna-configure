@@ -98,3 +98,13 @@ Note: At this time, the operator runs as a standalone binary.
 ./bin/haproxy-dyna-configure
 systemctl reload haproxy
 ~~~
+
+## Transaction File Permissions
+
+~~~shell
+sudo chcon -R -t haproxy_tmpfs_t /tmp/haproxy
+~~~
+
+
+
+
