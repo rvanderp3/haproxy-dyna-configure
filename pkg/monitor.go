@@ -40,12 +40,20 @@ func Initialize(ctx context.Context) error {
 }
 
 func CheckRanges(ctx context.Context) (*data.MonitorConfigSpec, error) {
+	var wg sync.WaitGroup
+	const maxThreads = 10
+	var activeThreads = 0
+
 	for idx := range monitorConfig.MonitorConfig.MonitorRanges {
-		err := CheckRange(ctx, &monitorConfig.MonitorConfig.MonitorRanges[idx])
-		if err != nil {
-			return nil, err
+		if activeThreads >= maxThreads {
+			wg.Wait()
+			activeThreads = 0
 		}
+		wg.Add(1)
+		activeThreads++
+		go CheckRange(ctx, &wg, &monitorConfig.MonitorConfig.MonitorRanges[idx])
 	}
+	wg.Wait()
 	return &monitorConfig, nil
 }
 
@@ -107,15 +115,18 @@ func CheckPort(ctx context.Context, wg *sync.WaitGroup, monitorPort *data.Monito
 
 }
 
-func CheckRange(ctx context.Context, monitorRange *data.MonitorRange) error {
+func CheckRange(ctx context.Context, cWaitGroup *sync.WaitGroup, monitorRange *data.MonitorRange) {
+	defer cWaitGroup.Done()
 	parseRange, err := iprange.ParseRange(fmt.Sprintf("%s-%s", monitorRange.IpAddressStart, monitorRange.IpAddressEnd))
 	if err != nil {
-		return err
+		logrus.Error(err)
+		return
 	}
 
 	ip, err := netip.ParseAddr(monitorRange.IpAddressStart)
 	if err != nil {
-		return err
+		logrus.Error(err)
+		return
 	}
 
 	for idx := range monitorRange.MonitorPorts {
@@ -137,5 +148,4 @@ func CheckRange(ctx context.Context, monitorRange *data.MonitorRange) error {
 		ip = ip.Next()
 	}
 	wg.Wait()
-	return nil
 }
