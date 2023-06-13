@@ -55,6 +55,7 @@ type HypershiftContext struct {
 type HostedCluster struct {
 	ApiFQDN           string
 	ControlPlanePorts []int32
+	IgnitionPort      int32
 	BaseDomain        string
 	ComputeNodeIP     map[string]string
 }
@@ -139,6 +140,7 @@ func GetHypershiftContext() *HypershiftContext {
 			ComputeNodeIP:     map[string]string{},
 			ControlPlanePorts: controlPlanePorts,
 			BaseDomain:        hostedCluster.BaseDomain,
+			IgnitionPort:      hostedCluster.IgnitionPort,
 		}
 
 		for name, computeNode := range hostedCluster.ComputeNodeIP {
@@ -188,12 +190,12 @@ func (a *HostedControlPlaneController) Reconcile(ctx context.Context, req reconc
 	for _, service := range serviceList.Items {
 		for _, port := range service.Spec.Ports {
 			if strings.Contains(strings.ToLower(service.Name), "ignition") {
-				log.Infof("not adding ignition node port")
-			} else {
-				if port.NodePort > 0 {
-					log.Infof("adding node port %d for service %s", port.NodePort, service.Name)
-					hcp.ControlPlanePorts = append(hcp.ControlPlanePorts, port.NodePort)
-				}
+
+				hcp.IgnitionPort = port.NodePort
+			}
+			if port.NodePort > 0 {
+				log.Infof("adding node port %d for service %s", port.NodePort, service.Name)
+				hcp.ControlPlanePorts = append(hcp.ControlPlanePorts, port.NodePort)
 			}
 		}
 	}

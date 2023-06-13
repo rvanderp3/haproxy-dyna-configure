@@ -47,6 +47,13 @@ func IsHypershiftEnabled() bool {
 	return monitorConfig.MonitorConfig.HypershiftEnable
 }
 
+func GetIgnitionBindIP() string {
+	mu.Lock()
+	defer mu.Unlock()
+
+	return monitorConfig.MonitorConfig.IgnitionBindIP
+}
+
 func CheckRanges(ctx context.Context) (*data.MonitorConfigSpec, error) {
 	var wg sync.WaitGroup
 	const maxThreads = 10

@@ -48,7 +48,7 @@ func makeCleanModel(client *clientnative.HAProxyClient) error {
 	return nil
 }
 
-func createFrontend(client *clientnative.HAProxyClient, name string, port *data.MonitorPort) error {
+func createFrontend(client *clientnative.HAProxyClient, name string, port *data.MonitorPort, bindAddress string) error {
 	logrus.Infof("creating frontend %s", name)
 	config := client.Configuration
 
@@ -100,8 +100,11 @@ func createFrontend(client *clientnative.HAProxyClient, name string, port *data.
 	}
 
 	version++
+	if len(bindAddress) == 0 {
+		bindAddress = "0.0.0.0"
+	}
 	bind := models.Bind{
-		Address: "0.0.0.0",
+		Address: bindAddress,
 		Port:    &port.Port,
 		Name:    name,
 	}
@@ -208,7 +211,7 @@ func ApplyDiscoveredConfiguration(monitorConfig *data.MonitorConfigSpec) error {
 			if err != nil {
 				return err
 			}
-			err = createFrontend(client, frontendName, &monitorPort)
+			err = createFrontend(client, frontendName, &monitorPort, "0.0.0.0")
 			if err != nil {
 				return err
 			}
@@ -249,7 +252,14 @@ func ApplyHypershiftConfiguration() error {
 			if err != nil {
 				return err
 			}
-			err = createFrontend(client, frontendName, apiPort)
+			bindAddress := "0.0.0.0"
+			if port == cluster.IgnitionPort {
+				ignitionIP := GetIgnitionBindIP()
+				if len(ignitionIP) > 0 {
+					bindAddress = ignitionIP
+				}
+			}
+			err = createFrontend(client, frontendName, apiPort, bindAddress)
 			if err != nil {
 				return err
 			}
@@ -277,7 +287,7 @@ func ApplyHypershiftConfiguration() error {
 		if err != nil {
 			return err
 		}
-		err = createFrontend(client, frontendName, ingressMonitorPort)
+		err = createFrontend(client, frontendName, ingressMonitorPort, "0.0.0.0")
 		if err != nil {
 			return err
 		}
