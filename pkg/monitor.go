@@ -4,10 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"github.com/go-yaml/yaml"
-	"github.com/netdata/go.d.plugin/pkg/iprange"
-	"github.com/rvanderp3/haproxy-dyna-configure/data"
-	"github.com/sirupsen/logrus"
 	"net"
 	"net/http"
 	"net/netip"
@@ -15,6 +11,11 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/go-yaml/yaml"
+	"github.com/netdata/go.d.plugin/pkg/iprange"
+	"github.com/rvanderp3/haproxy-dyna-configure/data"
+	"github.com/sirupsen/logrus"
 )
 
 var monitorConfig data.MonitorConfigSpec
@@ -37,6 +38,13 @@ func Initialize(ctx context.Context) error {
 		return nil
 	}
 	return nil
+}
+
+func IsHypershiftEnabled() bool {
+	mu.Lock()
+	defer mu.Unlock()
+
+	return monitorConfig.MonitorConfig.HypershiftEnable
 }
 
 func CheckRanges(ctx context.Context) (*data.MonitorConfigSpec, error) {

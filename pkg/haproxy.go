@@ -2,11 +2,12 @@ package pkg
 
 import (
 	"fmt"
+	"strings"
+
 	clientnative "github.com/haproxytech/client-native"
 	"github.com/haproxytech/models"
 	"github.com/rvanderp3/haproxy-dyna-configure/data"
 	"github.com/sirupsen/logrus"
-	"strings"
 )
 
 func makeCleanModel(client *clientnative.HAProxyClient) error {
@@ -141,7 +142,6 @@ func createBackendSwitchingRule(client *clientnative.HAProxyClient, baseDomain s
 			CondTest: fmt.Sprintf("{ req.ssl_sni -i %s%s }", port.PathMatch, baseDomain),
 		}
 	}
-
 	err = config.CreateBackendSwitchingRule(frontendName, &rule, "", version)
 	if err != nil {
 		return err
@@ -167,11 +167,11 @@ func createBackend(client *clientnative.HAProxyClient, name string, port *data.M
 	}
 
 	for _, target := range port.Targets {
-		port := port.Port
+		toPort := port.Port
 		server := &models.Server{
 			Address: target,
-			Port:    &port,
-			Name:    fmt.Sprintf("%s-%d", target, port),
+			Port:    &toPort,
+			Name:    fmt.Sprintf("%s-%d", target, toPort),
 			Check:   models.ServerCheckEnabled,
 			Verify:  models.ServerVerifyNone,
 		}
@@ -187,7 +187,7 @@ func createBackend(client *clientnative.HAProxyClient, name string, port *data.M
 	return nil
 }
 
-func ApplyConfiguration(monitorConfig *data.MonitorConfigSpec) error {
+func ApplyDiscoveredConfiguration(monitorConfig *data.MonitorConfigSpec) error {
 	client, err := clientnative.DefaultClient()
 	if err != nil {
 		return err
@@ -216,6 +216,74 @@ func ApplyConfiguration(monitorConfig *data.MonitorConfigSpec) error {
 			if err != nil {
 				return err
 			}
+		}
+	}
+	return nil
+}
+
+func ApplyHypershiftConfiguration() error {
+	client, err := clientnative.DefaultClient()
+	if err != nil {
+		return err
+	}
+
+	hypershiftContext := GetHypershiftContext()
+
+	for _, cluster := range hypershiftContext.HostedClusters {
+		for _, port := range cluster.ControlPlanePorts {
+			frontendName := fmt.Sprintf("dyna-frontend-%d", port)
+			backendName := fmt.Sprintf("%s-%d", cluster.BaseDomain, port)
+
+			apiTargets := []string{}
+
+			for _, target := range hypershiftContext.HostingNodesIPs {
+				apiTargets = append(apiTargets, target)
+			}
+			apiPort := &data.MonitorPort{
+				Port:       int64(port),
+				Name:       frontendName,
+				Targets:    apiTargets,
+				PathPrefix: "api",
+			}
+			err = createBackend(client, backendName, apiPort)
+			if err != nil {
+				return err
+			}
+			err = createFrontend(client, frontendName, apiPort)
+			if err != nil {
+				return err
+			}
+			err = createBackendSwitchingRule(client, cluster.BaseDomain, frontendName, backendName, apiPort)
+			if err != nil {
+				return err
+			}
+		}
+
+		ingressPort := 443
+		frontendName := "dyna-frontend-443"
+		backendName := fmt.Sprintf("%s-443", cluster.BaseDomain)
+		ingressTargets := []string{}
+
+		for _, target := range cluster.ComputeNodeIP {
+			ingressTargets = append(ingressTargets, target)
+		}
+		ingressMonitorPort := &data.MonitorPort{
+			Port:       int64(ingressPort),
+			Name:       frontendName,
+			Targets:    ingressTargets,
+			PathPrefix: "apps",
+		}
+		err = createBackend(client, backendName, ingressMonitorPort)
+		if err != nil {
+			return err
+		}
+		err = createFrontend(client, frontendName, ingressMonitorPort)
+		if err != nil {
+			return err
+		}
+		err = createBackendSwitchingRule(client, cluster.BaseDomain, frontendName, backendName, ingressMonitorPort)
+		if err != nil {
+			return err
 		}
 	}
 	return nil

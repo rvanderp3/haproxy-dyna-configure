@@ -17,8 +17,9 @@ type MonitorRange struct {
 }
 
 type MonitorConfig struct {
-	MonitorRanges []MonitorRange `yaml:"monitor-ranges"`
-	CheckTimeout  int            `yaml:"check-timeout"`
+	MonitorRanges    []MonitorRange `yaml:"monitor-ranges"`
+	CheckTimeout     int            `yaml:"check-timeout"`
+	HypershiftEnable bool           `yaml:"hypershift-enable"`
 }
 
 type MonitorConfigSpec struct {
