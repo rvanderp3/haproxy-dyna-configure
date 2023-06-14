@@ -20,6 +20,7 @@ type MonitorConfig struct {
 	MonitorRanges    []MonitorRange `yaml:"monitor-ranges"`
 	CheckTimeout     int            `yaml:"check-timeout"`
 	HypershiftEnable bool           `yaml:"hypershift-enable"`
+	IgnitionBindIP   string         `yaml:"ignition-bind-ip"`
 }
 
 type MonitorConfigSpec struct {

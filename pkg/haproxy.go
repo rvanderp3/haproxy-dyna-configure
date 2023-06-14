@@ -115,6 +115,49 @@ func createFrontend(client *clientnative.HAProxyClient, name string, port *data.
 	return nil
 }
 
+func createFrontendWithDefaultBackend(client *clientnative.HAProxyClient, name string, port *data.MonitorPort, backend string, bindAddress string) error {
+	logrus.Infof("creating frontend %s", name)
+	config := client.Configuration
+
+	version, err := config.GetVersion("")
+	if err != nil {
+		return err
+	}
+
+	fe := models.Frontend{
+		Mode:           models.FrontendModeTCP,
+		Name:           name,
+		DefaultBackend: backend,
+	}
+
+	_, _, err = config.GetFrontend(name, "")
+	if err == nil {
+		logrus.Infof("frontend %s already exists", name)
+		return nil
+	}
+
+	err = config.CreateFrontend(&fe, "", version)
+	if err != nil {
+		return err
+	}
+
+	version++
+	if len(bindAddress) == 0 {
+		bindAddress = "0.0.0.0"
+	}
+	bind := models.Bind{
+		Address: bindAddress,
+		Port:    &port.Port,
+		Name:    name,
+	}
+	err = config.CreateBind(name, &bind, "", version)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func createBackendSwitchingRule(client *clientnative.HAProxyClient, baseDomain string, frontendName string, backendName string, port *data.MonitorPort) error {
 	logrus.Infof("creating backend switching rule %s", backendName)
 	config := client.Configuration
@@ -259,11 +302,7 @@ func ApplyHypershiftConfiguration() error {
 					bindAddress = ignitionIP
 				}
 			}
-			err = createFrontend(client, frontendName, apiPort, bindAddress)
-			if err != nil {
-				return err
-			}
-			err = createBackendSwitchingRule(client, cluster.BaseDomain, frontendName, backendName, apiPort)
+			err = createFrontendWithDefaultBackend(client, frontendName, apiPort, backendName, bindAddress)
 			if err != nil {
 				return err
 			}
