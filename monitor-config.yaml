@@ -1,5 +1,6 @@
 monitor-config:
   check-timeout: 100
+  subnets-json-path: /tmp/subnets.json
   monitor-ranges:
     - ip-address-start: "192.168.88.2"
       ip-address-end: "192.168.88.10"

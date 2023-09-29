@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: haproxy-dyna-configure
+  namespace: vsphere-infra
+spec:
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: haproxy-dyna-configure
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: haproxy-dyna-configure
+    spec:
+      containers:
+      - env:
+        - name: KUBECONFIG
+          value: '...'
+        image: quay.io/ocp-splat/haproxy-dyna-configure:latest
+        imagePullPolicy: Always
+        name: container
+        ports:
+        - containerPort: 53
+          hostPort: 53
+          protocol: TCP
+        resources: {}
+        securityContext:
+          privileged: true
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /creds
+          name: creds
+      dnsPolicy: ClusterFirst
+      hostNetwork: true
+      nodeSelector:
+        node-role.kubernetes.io/master: ""
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      tolerations:
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/master
+        operator: Exists
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/etcd
+        operator: Exists
+      volumes:
+      - name: haproxy-cfg
+        hostPath:          
+          path: /etc/haproxy/haproxy.cfg          
+          type: File
+      - name: haproxy-sock
+        hostPath:          
+          path: /var/run/haproxy.sock          
+          type: File
+      - name: creds
+        secret:
+          defaultMode: 420
+          secretName: '...'
+  updateStrategy:
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+    type: RollingUpdate

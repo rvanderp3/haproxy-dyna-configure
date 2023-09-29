@@ -14,16 +14,17 @@ func main() {
 	log.SetLevel(log.DebugLevel)
 	err := pkg.Initialize(ctx)
 	if err != nil {
+		log.Errorf("unable to initialize %s", err)
 		return
 	}
 	cfg, err := pkg.CheckRanges(ctx)
 	if err != nil {
-		log.Errorf("%s", err)
+		log.Errorf("unable to check ranges %s", err)
 		return
 	}
 	err = pkg.ApplyConfiguration(cfg)
 	if err != nil {
-		log.Errorf("%s", err)
+		log.Errorf("unable to apply configuration %s", err)
 		return
 	}
 }

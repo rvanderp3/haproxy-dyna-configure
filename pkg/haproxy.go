@@ -2,11 +2,12 @@ package pkg
 
 import (
 	"fmt"
+	"strings"
+
 	clientnative "github.com/haproxytech/client-native"
 	"github.com/haproxytech/models"
 	"github.com/rvanderp3/haproxy-dyna-configure/data"
 	"github.com/sirupsen/logrus"
-	"strings"
 )
 
 func makeCleanModel(client *clientnative.HAProxyClient) error {
@@ -99,9 +100,10 @@ func createFrontend(client *clientnative.HAProxyClient, name string, port *data.
 	}
 
 	version++
+	containerPort := port.Port + 10000
 	bind := models.Bind{
 		Address: "0.0.0.0",
-		Port:    &port.Port,
+		Port:    &containerPort,
 		Name:    name,
 	}
 	err = config.CreateBind(name, &bind, "", version)
