@@ -4,10 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"github.com/go-yaml/yaml"
-	"github.com/netdata/go.d.plugin/pkg/iprange"
-	"github.com/rvanderp3/haproxy-dyna-configure/data"
-	"github.com/sirupsen/logrus"
 	"net"
 	"net/http"
 	"net/netip"
@@ -15,6 +11,12 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/go-yaml/yaml"
+	"github.com/netdata/go.d.plugin/pkg/iprange"
+	"github.com/pkg/errors"
+	"github.com/rvanderp3/haproxy-dyna-configure/data"
+	"github.com/sirupsen/logrus"
 )
 
 var monitorConfig data.MonitorConfigSpec
@@ -35,6 +37,14 @@ func Initialize(ctx context.Context) error {
 	}
 	if err != nil {
 		return nil
+	}
+
+	if len(monitorConfig.MonitorConfig.SubnetsJson) > 0 {
+		nativeSubnetRanges, err := parseSubnetsJson(monitorConfig.MonitorConfig.SubnetsJson)
+		if err != nil {
+			return errors.Wrap(err, "unable to parse native subnet json")
+		}
+		monitorConfig.MonitorConfig.MonitorRanges = append(monitorConfig.MonitorConfig.MonitorRanges, nativeSubnetRanges...)
 	}
 	return nil
 }

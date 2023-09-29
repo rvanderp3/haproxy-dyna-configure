@@ -19,6 +19,7 @@ type MonitorRange struct {
 type MonitorConfig struct {
 	MonitorRanges []MonitorRange `yaml:"monitor-ranges"`
 	CheckTimeout  int            `yaml:"check-timeout"`
+	SubnetsJson   string         `yaml:"subnets-json-path"`
 }
 
 type MonitorConfigSpec struct {
