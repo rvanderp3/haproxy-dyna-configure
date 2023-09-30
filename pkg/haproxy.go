@@ -14,35 +14,35 @@ func makeCleanModel(client *clientnative.HAProxyClient) error {
 	config := client.Configuration
 	_, frontEnds, err := config.GetFrontends("")
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to get frontends: %w", err)
 	}
 
 	for _, frontEnd := range frontEnds {
 		version, err := config.GetVersion("")
 		if err != nil {
-			return err
+			return fmt.Errorf("unable to get config version: %w", err)
 		}
 		if frontEnd.Name == "stats" {
 			continue
 		}
 		err = client.Configuration.DeleteFrontend(frontEnd.Name, "", version)
 		if err != nil {
-			return err
+			return fmt.Errorf("unable to delete frontend: %w", err)
 		}
 	}
 
 	_, backEnds, err := client.Configuration.GetBackends("")
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to get backends: %w", err)
 	}
 	for _, backEnd := range backEnds {
 		version, err := config.GetVersion("")
 		if err != nil {
-			return err
+			return fmt.Errorf("unable to get config version: %w", err)
 		}
 		err = client.Configuration.DeleteBackend(backEnd.Name, "", version)
 		if err != nil {
-			return err
+			return fmt.Errorf("unable to delete backend: %w", err)
 		}
 	}
 	return nil
@@ -54,7 +54,7 @@ func createFrontend(client *clientnative.HAProxyClient, name string, port *data.
 
 	version, err := config.GetVersion("")
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to get config version: %w", err)
 	}
 
 	fe := models.Frontend{
@@ -64,13 +64,13 @@ func createFrontend(client *clientnative.HAProxyClient, name string, port *data.
 
 	_, _, err = config.GetFrontend(name, "")
 	if err == nil {
-		logrus.Infof("frontend %s already exists", name)
+		logrus.Infof("frontend %s already exists.", name)
 		return nil
 	}
 
 	err = config.CreateFrontend(&fe, "", version)
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to create frontend: %w", err)
 	}
 
 	version++
@@ -83,7 +83,7 @@ func createFrontend(client *clientnative.HAProxyClient, name string, port *data.
 	}
 	err = config.CreateTCPRequestRule("frontend", name, &tcpRule1, "", version)
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to create TCP request rule 1: %w", err)
 	}
 
 	version++
@@ -96,7 +96,7 @@ func createFrontend(client *clientnative.HAProxyClient, name string, port *data.
 	}
 	err = config.CreateTCPRequestRule("frontend", name, &tcpRule2, "", version)
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to create TCP request rule 2: %w", err)
 	}
 
 	version++
@@ -108,7 +108,7 @@ func createFrontend(client *clientnative.HAProxyClient, name string, port *data.
 	}
 	err = config.CreateBind(name, &bind, "", version)
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to create bind: %w", err)
 	}
 	return nil
 }
@@ -157,7 +157,7 @@ func createBackend(client *clientnative.HAProxyClient, name string, port *data.M
 	config := client.Configuration
 	version, err := config.GetVersion("")
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to get config version: %w", err)
 	}
 	backend := &models.Backend{
 		Mode: models.BackendModeTCP,
@@ -165,7 +165,7 @@ func createBackend(client *clientnative.HAProxyClient, name string, port *data.M
 	}
 	err = config.CreateBackend(backend, "", version)
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to create backend: %w", err)
 	}
 
 	for _, target := range port.Targets {
@@ -179,11 +179,11 @@ func createBackend(client *clientnative.HAProxyClient, name string, port *data.M
 		}
 		version, err = config.GetVersion("")
 		if err != nil {
-			return err
+			return fmt.Errorf("unable to get config version: %w", err)
 		}
 		err = config.CreateServer(name, server, "", version)
 		if err != nil {
-			return err
+			return fmt.Errorf("unable to create server: %w", err)
 		}
 	}
 	return nil
@@ -208,15 +208,15 @@ func ApplyConfiguration(monitorConfig *data.MonitorConfigSpec) error {
 			frontendName := fmt.Sprintf("dyna-frontend-%d", monitorPort.Port)
 			err := createBackend(client, name, &monitorPort)
 			if err != nil {
-				return err
+				return fmt.Errorf("unable to create backend: %w", err)
 			}
 			err = createFrontend(client, frontendName, &monitorPort)
 			if err != nil {
-				return err
+				return fmt.Errorf("unable to create frontend: %w", err)
 			}
 			err = createBackendSwitchingRule(client, monitorRange.BaseDomain, frontendName, name, &monitorPort)
 			if err != nil {
-				return err
+				return fmt.Errorf("unable to create backend switching rules: %w", err)
 			}
 		}
 	}
