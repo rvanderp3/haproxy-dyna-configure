@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"strings"
 
-	clientnative "github.com/haproxytech/client-native"
+	"github.com/haproxytech/client-native/configuration"
 	"github.com/haproxytech/models"
 	"github.com/rvanderp3/haproxy-dyna-configure/data"
 	"github.com/sirupsen/logrus"
 )
 
-func makeCleanModel(client *clientnative.HAProxyClient) error {
-	config := client.Configuration
+func makeCleanModel(config *configuration.Client) error {
+	//config := client.Configuration
 	_, frontEnds, err := config.GetFrontends("")
 	if err != nil {
 		return fmt.Errorf("unable to get frontends: %w", err)
@@ -25,13 +25,13 @@ func makeCleanModel(client *clientnative.HAProxyClient) error {
 		if frontEnd.Name == "stats" {
 			continue
 		}
-		err = client.Configuration.DeleteFrontend(frontEnd.Name, "", version)
+		err = config.DeleteFrontend(frontEnd.Name, "", version)
 		if err != nil {
 			return fmt.Errorf("unable to delete frontend: %w", err)
 		}
 	}
 
-	_, backEnds, err := client.Configuration.GetBackends("")
+	_, backEnds, err := config.GetBackends("")
 	if err != nil {
 		return fmt.Errorf("unable to get backends: %w", err)
 	}
@@ -40,7 +40,7 @@ func makeCleanModel(client *clientnative.HAProxyClient) error {
 		if err != nil {
 			return fmt.Errorf("unable to get config version: %w", err)
 		}
-		err = client.Configuration.DeleteBackend(backEnd.Name, "", version)
+		err = config.DeleteBackend(backEnd.Name, "", version)
 		if err != nil {
 			return fmt.Errorf("unable to delete backend: %w", err)
 		}
@@ -48,9 +48,8 @@ func makeCleanModel(client *clientnative.HAProxyClient) error {
 	return nil
 }
 
-func createFrontend(client *clientnative.HAProxyClient, name string, port *data.MonitorPort) error {
+func createFrontend(config *configuration.Client, name string, port *data.MonitorPort) error {
 	logrus.Infof("creating frontend %s", name)
-	config := client.Configuration
 
 	version, err := config.GetVersion("")
 	if err != nil {
@@ -113,9 +112,9 @@ func createFrontend(client *clientnative.HAProxyClient, name string, port *data.
 	return nil
 }
 
-func createBackendSwitchingRule(client *clientnative.HAProxyClient, baseDomain string, frontendName string, backendName string, port *data.MonitorPort) error {
+func createBackendSwitchingRule(config *configuration.Client, baseDomain string, frontendName string, backendName string, port *data.MonitorPort) error {
 	logrus.Infof("creating backend switching rule %s", backendName)
-	config := client.Configuration
+
 	version, err := config.GetVersion("")
 	if err != nil {
 		return err
@@ -152,9 +151,9 @@ func createBackendSwitchingRule(client *clientnative.HAProxyClient, baseDomain s
 	return nil
 }
 
-func createBackend(client *clientnative.HAProxyClient, name string, port *data.MonitorPort) error {
+func createBackend(config *configuration.Client, name string, port *data.MonitorPort) error {
 	logrus.Infof("creating backend %s", name)
-	config := client.Configuration
+
 	version, err := config.GetVersion("")
 	if err != nil {
 		return fmt.Errorf("unable to get config version: %w", err)
@@ -190,11 +189,25 @@ func createBackend(client *clientnative.HAProxyClient, name string, port *data.M
 }
 
 func ApplyConfiguration(monitorConfig *data.MonitorConfigSpec) error {
-	client, err := clientnative.DefaultClient()
+
+	clientParams := configuration.ClientParams{
+		ConfigurationFile:      configuration.DefaultConfigurationFile,
+		Haproxy:                configuration.DefaultHaproxy,
+		UseValidation:          configuration.DefaultUseValidation,
+		PersistentTransactions: false,
+		TransactionDir:         "/etc/haproxy/tx",
+		MasterWorker:           false,
+	}
+
+	client := &configuration.Client{}
+	err := client.Init(clientParams)
+
 	if err != nil {
 		return err
 	}
 
+	//client.
+	//client.
 	err = makeCleanModel(client)
 	if err != nil {
 		return err
