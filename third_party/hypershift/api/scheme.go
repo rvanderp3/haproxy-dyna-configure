@@ -1,9 +1,9 @@
 package api
 
 import (
-	"os"
-
-	hyperv1beta1 "github.com/rvanderp3/haproxy-dyna-configure/third_party/hypershift/api/v1beta1"
+	hyperv1beta1 "github.com/openshift-splat-team/haproxy-dyna-configure/third_party/hypershift/api/v1beta1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 )
 
 var (

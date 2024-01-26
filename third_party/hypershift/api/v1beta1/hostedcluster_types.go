@@ -7,7 +7,7 @@ import (
 
 	configv1 "github.com/openshift/api/config/v1"
 
-	"github.com/rvanderp3/haproxy-dyna-configure/third_party/hypershift/api/util/ipnet"
+	"github.com/openshift-splat-team/haproxy-dyna-configure/third_party/hypershift/api/util/ipnet"
 )
 
 func init() {
