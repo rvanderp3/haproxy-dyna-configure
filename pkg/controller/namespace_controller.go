@@ -23,11 +23,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/openshift-splat-team/haproxy-dyna-configure/data"
 	"github.com/openshift-splat-team/haproxy-dyna-configure/pkg"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -103,6 +103,7 @@ func (r *NamespaceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 func StartManager() {
 	var metricsAddr string
+	var namespace string
 	var enableLeaderElection bool
 	var probeAddr string
 	controllerContext := &ControllerContext{}
@@ -112,8 +113,6 @@ func StartManager() {
 		setupLog.Error(err, "unable to get monitor config")
 		os.Exit(1)
 	}
-
-	controllerContext.Initialize(config)
 
 	// Define the interval
 	interval := 5 * time.Second
@@ -130,17 +129,15 @@ func StartManager() {
 		for {
 			select {
 			case <-ticker.C:
-				// Call your function
-				controllerContext.CheckForARecords()
-				spew.Dump(controllerContext.namespaceTargets)
+				controllerContext.Reconcile()
 			case <-done:
-				// Exit the goroutine if done is signalled
 				return
 			}
 		}
 	}()
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
+	flag.StringVar(&namespace, "namespace", "vsphere-infra-helpers", "The namespace where ")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
@@ -166,9 +163,11 @@ func StartManager() {
 		os.Exit(1)
 	}
 
+	client := mgr.GetClient()
 	corev1.AddToScheme(mgr.GetScheme())
+	appsv1.AddToScheme(mgr.GetScheme())
 	if err = (&NamespaceReconciler{
-		Client:  mgr.GetClient(),
+		Client:  client,
 		Scheme:  mgr.GetScheme(),
 		Config:  config,
 		Context: controllerContext,
@@ -178,7 +177,7 @@ func StartManager() {
 	}
 
 	if err = (&PodReconciler{
-		Client:  mgr.GetClient(),
+		Client:  client,
 		Scheme:  mgr.GetScheme(),
 		Context: controllerContext,
 	}).SetupWithManager(mgr); err != nil {
@@ -186,12 +185,15 @@ func StartManager() {
 		os.Exit(1)
 	}
 
+	controllerContext.Initialize(config, client, namespace)
+
 	//+kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")
 		os.Exit(1)
 	}
+
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
@@ -202,4 +204,5 @@ func StartManager() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+
 }

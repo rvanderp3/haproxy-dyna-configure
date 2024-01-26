@@ -35,10 +35,10 @@ func createBackendSwitchingRule(baseDomain string, frontend *haproxy.Section, ba
 		if strings.HasPrefix(pathPrefix, "*") {
 			pathPrefix = pathPrefix[1:]
 		}
-		rule = fmt.Sprintf("if { req.ssl_sni -m end %s.%s }", pathPrefix, baseDomain)
+		rule = fmt.Sprintf("if { req.ssl_sni -m end %s%s }", pathPrefix, baseDomain)
 
 	} else if len(port.PathMatch) > 0 {
-		rule = fmt.Sprintf("if { req.ssl_sni -i %s.%s }", port.PathMatch, baseDomain)
+		rule = fmt.Sprintf("if { req.ssl_sni -i %s%s }", port.PathMatch, baseDomain)
 	}
 
 	frontend.AppendAttribute(fmt.Sprintf("use_backend %s %s", backend.Name, rule))
@@ -65,25 +65,25 @@ func createBackend(name string, port *data.MonitorPort) *haproxy.Section {
 	return &backend
 }
 
-func BuildDynamicConfiguration(monitorConfig *data.MonitorConfigSpec) (string, error) {
-	sections := []haproxy.Section{}
-	for _, monitorRange := range monitorConfig.MonitorConfig.MonitorRanges {
+func BuildDynamicConfiguration(monitorConfig *data.MonitorConfig) (string, error) {
+	sections := []*haproxy.Section{}
+	for _, monitorRange := range monitorConfig.MonitorRanges {
 		for _, monitorPort := range monitorRange.MonitorPorts {
 			if len(monitorPort.Targets) == 0 || len(monitorRange.BaseDomain) == 0 {
 				continue
 			}
 			name := fmt.Sprintf("%s-%d", monitorRange.BaseDomain, monitorPort.Port)
-			frontendName := fmt.Sprintf("dyna-frontend-%d", monitorPort.Port)
+			frontendName := fmt.Sprintf("fe-%s", name)
 
 			frontEnd := createFrontend(frontendName, &monitorPort)
 			backEnd := createBackend(name, &monitorPort)
-
-			sections = append(sections, *frontEnd, *backEnd)
 
 			err := createBackendSwitchingRule(monitorRange.BaseDomain, frontEnd, backEnd, &monitorPort)
 			if err != nil {
 				return "", fmt.Errorf("unable to create backend switching rules: %w", err)
 			}
+
+			sections = append(sections, frontEnd, backEnd)
 		}
 	}
 
@@ -95,9 +95,9 @@ func BuildDynamicConfiguration(monitorConfig *data.MonitorConfigSpec) (string, e
 	return buf.String(), nil
 }
 
-func BuildTargetHAProxyConfig(monitorConfig *data.MonitorConfigSpec) (string, string, error) {
+func BuildTargetHAProxyConfig(monitorConfig *data.MonitorConfig) (string, string, error) {
 	buffer := bytes.Buffer{}
-	buffer.WriteString(monitorConfig.MonitorConfig.HaproxyHeader)
+	buffer.WriteString(monitorConfig.HaproxyHeader)
 
 	dynamicConfig, err := BuildDynamicConfiguration(monitorConfig)
 	if err != nil {

@@ -5,6 +5,5 @@ import (
 )
 
 func TestStartManager(t *testing.T) {
-
 	StartManager()
 }
