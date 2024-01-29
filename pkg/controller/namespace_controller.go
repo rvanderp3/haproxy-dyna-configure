@@ -19,7 +19,6 @@ package controllers
 import (
 	"context"
 	"flag"
-	"fmt"
 	"os"
 	"time"
 
@@ -64,9 +63,7 @@ func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	pod := &corev1.Pod{}
 	err := r.Client.Get(context.TODO(), req.NamespacedName, pod)
 	if err != nil {
-		//		fmt.Errorf("unable to get pod: %v", err)
 		return ctrl.Result{}, nil
-
 	}
 
 	r.Context.Update(pod)
@@ -88,7 +85,8 @@ func (r *NamespaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	err := r.Client.Get(context.TODO(), req.NamespacedName, ns)
 
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("unable to get namespace: %v", err)
+		r.Context.Destroy(req.Namespace)
+		return ctrl.Result{}, nil
 	}
 
 	return ctrl.Result{}, nil

@@ -11,6 +11,7 @@ import (
 	"github.com/openshift-splat-team/haproxy-dyna-configure/data"
 	"github.com/openshift-splat-team/haproxy-dyna-configure/pkg"
 	"github.com/openshift-splat-team/haproxy-dyna-configure/pkg/util"
+	"github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -94,6 +95,7 @@ func (c *ControllerContext) reconcileTargets() *data.MonitorConfig {
 		HaproxyHeader: c.config.HaproxyHeader,
 	}
 
+	logrus.Infof("number of namespaces: %d", len(c.namespaceTargets))
 	for ns, jobs := range c.namespaceTargets {
 		for jobHash, job := range jobs {
 			ports := []data.MonitorPort{}
@@ -109,9 +111,9 @@ func (c *ControllerContext) reconcileTargets() *data.MonitorConfig {
 			if len(job.IngressVIP) > 0 {
 				ports = append(ports,
 					data.MonitorPort{
-						Port:      443,
-						PathMatch: "*.apps.",
-						Targets:   []string{job.IngressVIP},
+						Port:       443,
+						PathPrefix: "*.apps.",
+						Targets:    []string{job.IngressVIP},
 					})
 			}
 			if len(ports) == 0 {
@@ -131,7 +133,6 @@ func (c *ControllerContext) hasConfigUpdated(monitorConfig *data.MonitorConfig) 
 		c.lastMonitorConfig = monitorConfig
 		return true
 	}
-	c.lastMonitorConfig = monitorConfig
 
 	monitorRangeMap := map[string]data.MonitorRange{}
 	prevMonitorRangeMap := map[string]data.MonitorRange{}
@@ -152,11 +153,13 @@ func (c *ControllerContext) hasConfigUpdated(monitorConfig *data.MonitorConfig) 
 		}
 	}
 
+	c.lastMonitorConfig = monitorConfig
+
 	return false
 }
 
 func (c *ControllerContext) Reconcile() error {
-	c.log.V(2).Info("reconciling HAProxy configuration")
+	logrus.Infof("reconciling HAProxy configuration")
 	ctx := context.TODO()
 	if err := c.CheckForARecords(); err != nil {
 		return fmt.Errorf("error while checking A records: %v", err)
@@ -170,6 +173,8 @@ func (c *ControllerContext) Reconcile() error {
 	if !c.hasConfigUpdated(monitorConfig) {
 		return nil
 	}
+
+	logrus.Infof("configuration has updated, building new haproxy configuration")
 
 	content, hash, err := pkg.BuildTargetHAProxyConfig(monitorConfig)
 	if err != nil {
@@ -231,12 +236,12 @@ func (c *ControllerContext) bumpHaproxyDeployment(ctx context.Context, hash stri
 	}
 
 	if create {
-		c.log.V(4).Info("creating haproxy configmap")
+		logrus.Infof("creating haproxy configmap")
 		if err := c.client.Create(ctx, &deployment); err != nil {
 			return fmt.Errorf("unable to create config map: %v", err)
 		}
 	} else {
-		c.log.V(4).Info("updating haproxy configmap")
+		logrus.Infof("updating haproxy configmap")
 		if deployment.Spec.Template.Annotations == nil {
 			deployment.Spec.Template.Annotations = map[string]string{}
 		}
@@ -306,13 +311,13 @@ func (c *ControllerContext) CheckForARecords() error {
 	return nil
 }
 
-func (c *ControllerContext) Destroy(namespace *corev1.Namespace) error {
-	ns := namespace.Name
-
+func (c *ControllerContext) Destroy(namespace string) error {
+	logrus.Infof("destroying namespace %s", namespace)
 	targetsMutex.Lock()
 	defer targetsMutex.Unlock()
-	if _, exists := c.namespaceTargets[ns]; !exists {
-		delete(c.namespaceTargets, ns)
+	if _, exists := c.namespaceTargets[namespace]; exists {
+		logrus.Infof("deleting namespace %s", namespace)
+		delete(c.namespaceTargets, namespace)
 	}
 	return nil
 }
